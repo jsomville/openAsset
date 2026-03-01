@@ -1,0 +1,43 @@
+generator client {
+    provider = "prisma-client-js"
+    output   = "../generated/prisma"
+}
+
+datasource db {
+    provider = "postgresql"
+}
+
+model Device {
+    hostname      String   @unique
+    host          String
+    os            String
+    kernel        String
+    ram           String
+    cpu           String
+    type          String
+    status        String
+    uptime        String
+    packagesCount Int
+    createdAt     DateTime @default(now())
+    updatedAt     DateTime @updatedAt
+}
+
+model Package {
+    name          String
+    type          String
+    latestVersion String
+    link          String
+    createdAt     DateTime @default(now())
+    updatedAt     DateTime @updatedAt
+
+    @@id([name, latestVersion])
+}
+
+model DevicePackage {
+    hostname    String
+    packageName String
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+
+    @@id([hostname, packageName])
+}
