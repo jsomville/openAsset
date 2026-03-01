@@ -173,65 +173,113 @@ async function showDeviceDetails(hostname) {
         
         const device = await response.json();
         const detailsTitle = document.getElementById('detailsTitle');
-        const detailsBody = document.getElementById('detailsBody');
+        const deviceHeader = document.getElementById('deviceHeader');
+        const packagesSection = document.getElementById('packagesSection');
+        const packagesList = document.getElementById('packagesList');
+        const packloadingState = document.getElementById('packloadingState');
         
-        detailsTitle.textContent = `${escapeHtml(device.hostname)} - Details`;
+        detailsTitle.textContent = `${escapeHtml(device.hostname)}`;
         
         const createdDate = new Date(device.createdAt).toLocaleString();
         const updatedDate = new Date(device.updatedAt).toLocaleString();
+        const statusClass = device.status === 'online' ? 'online' : 'offline';
         
-        detailsBody.innerHTML = `
-            <div class="device-info">
-                <div class="device-info-row">
-                    <span class="device-label">Hostname:</span>
-                    <span class="device-value">${escapeHtml(device.hostname)}</span>
+        // Display device header info  
+        deviceHeader.innerHTML = `
+            <div class="header-title">${escapeHtml(device.hostname)}</div>
+            <div class="header-grid">
+                <div class="header-item">
+                    <span class="header-label">Host</span>
+                    <span class="header-value">${escapeHtml(device.host)}</span>
                 </div>
-                <div class="device-info-row">
-                    <span class="device-label">Host:</span>
-                    <span class="device-value">${escapeHtml(device.host)}</span>
+                <div class="header-item">
+                    <span class="header-label">OS</span>
+                    <span class="header-value">${escapeHtml(device.os)}</span>
                 </div>
-                <div class="device-info-row">
-                    <span class="device-label">OS:</span>
-                    <span class="device-value">${escapeHtml(device.os)}</span>
+                <div class="header-item">
+                    <span class="header-label">Kernel</span>
+                    <span class="header-value">${escapeHtml(device.kernel)}</span>
                 </div>
-                <div class="device-info-row">
-                    <span class="device-label">Kernel:</span>
-                    <span class="device-value">${escapeHtml(device.kernel)}</span>
+                <div class="header-item">
+                    <span class="header-label">CPU</span>
+                    <span class="header-value">${escapeHtml(device.cpu)}</span>
                 </div>
-                <div class="device-info-row">
-                    <span class="device-label">CPU:</span>
-                    <span class="device-value">${escapeHtml(device.cpu)}</span>
+                <div class="header-item">
+                    <span class="header-label">RAM</span>
+                    <span class="header-value">${escapeHtml(device.ram)}</span>
                 </div>
-                <div class="device-info-row">
-                    <span class="device-label">RAM:</span>
-                    <span class="device-value">${escapeHtml(device.ram)}</span>
+                <div class="header-item">
+                    <span class="header-label">Type</span>
+                    <span class="header-value">${escapeHtml(device.type)}</span>
                 </div>
-                <div class="device-info-row">
-                    <span class="device-label">Type:</span>
-                    <span class="device-value">${escapeHtml(device.type)}</span>
+                <div class="header-item">
+                    <span class="header-label">Status</span>
+                    <span class="header-value"><span class="status-badge ${statusClass}">${escapeHtml(device.status)}</span></span>
                 </div>
-                <div class="device-info-row">
-                    <span class="device-label">Status:</span>
-                    <span class="device-value">${escapeHtml(device.status)}</span>
+                <div class="header-item">
+                    <span class="header-label">Uptime</span>
+                    <span class="header-value">${escapeHtml(device.uptime)}</span>
                 </div>
-                <div class="device-info-row">
-                    <span class="device-label">Uptime:</span>
-                    <span class="device-value">${escapeHtml(device.uptime)}</span>
+                <div class="header-item">
+                    <span class="header-label">Packages</span>
+                    <span class="header-value">${device.packagesCount}</span>
                 </div>
-                <div class="device-info-row">
-                    <span class="device-label">Packages Count:</span>
-                    <span class="device-value">${device.packagesCount}</span>
+                <div class="header-item">
+                    <span class="header-label">Created</span>
+                    <span class="header-value">${createdDate}</span>
                 </div>
-                <div class="device-info-row">
-                    <span class="device-label">Created:</span>
-                    <span class="device-value">${createdDate}</span>
-                </div>
-                <div class="device-info-row">
-                    <span class="device-label">Updated:</span>
-                    <span class="device-value">${updatedDate}</span>
+                <div class="header-item">
+                    <span class="header-label">Updated</span>
+                    <span class="header-value">${updatedDate}</span>
                 </div>
             </div>
         `;
+        
+        // Fetch and display packages
+        if (device.packagesCount > 0) {
+            packagesSection.style.display = 'block';
+            packloadingState.style.display = 'block';
+            packagesList.innerHTML = '';
+            
+            try {
+                const packagesResponse = await fetch(`/api/package/device/${encodeURIComponent(hostname)}`);
+                
+                if (packagesResponse.ok) {
+                    const packages = await packagesResponse.json();
+                    packloadingState.style.display = 'none';
+                    
+                    if (packages.length === 0) {
+                        packagesList.innerHTML = '<div class="packages-empty">No packages found</div>';
+                    } else {
+                        // Group packages by type
+                        const groupedPackages = groupPackagesByType(packages);
+                        packagesList.innerHTML = Object.entries(groupedPackages)
+                            .map(([type, pkgs]) => createPackageGroup(type, pkgs))
+                            .join('');
+                        
+                        // Attach collapse/expand listeners
+                        document.querySelectorAll('.package-group-header').forEach(header => {
+                            header.addEventListener('click', togglePackageGroup);
+                            header.addEventListener('keydown', (e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    togglePackageGroup.call(header);
+                                }
+                            });
+                        });
+                    }
+                } else {
+                    packloadingState.style.display = 'none';
+                    packagesList.innerHTML = '<div class="packages-empty">Failed to load packages</div>';
+                }
+            } catch (error) {
+                console.error('Error loading packages:', error);
+                packloadingState.style.display = 'none';
+                packagesList.innerHTML = '<div class="packages-empty">Error loading packages</div>';
+            }
+        } else {
+            packagesSection.style.display = 'none';
+        }
         
         detailsModal.style.display = 'flex';
     } catch (error) {
@@ -240,7 +288,89 @@ async function showDeviceDetails(hostname) {
     }
 }
 
-// Show Delete Confirmation
+// Group packages by type
+function groupPackagesByType(packages) {
+    const grouped = {};
+    
+    packages.forEach(pkg => {
+        const type = pkg.type || 'Unknown';
+        if (!grouped[type]) {
+            grouped[type] = [];
+        }
+        grouped[type].push(pkg);
+    });
+    
+    // Sort groups alphabetically
+    const sorted = {};
+    Object.keys(grouped)
+        .sort()
+        .forEach(key => {
+            sorted[key] = grouped[key];
+        });
+    
+    return sorted;
+}
+
+// Create Package Group
+function createPackageGroup(type, packages) {
+    const sortedPackages = packages.sort((a, b) => a.name.localeCompare(b.name));
+    const groupId = `group-${type.replace(/\s+/g, '-').toLowerCase()}`;
+    
+    return `
+        <div class="package-group" id="${groupId}">
+            <div class="package-group-header" role="button" tabindex="0" aria-expanded="false">
+                <div class="package-group-header-left">
+                    <span class="package-group-toggle">▶</span>
+                    <h4 class="package-group-title">${escapeHtml(type)}</h4>
+                </div>
+                <span class="package-group-count">${packages.length}</span>
+            </div>
+            <div class="package-group-items collapsed">
+                ${sortedPackages.map(pkg => createPackageItem(pkg)).join('')}
+            </div>
+        </div>
+    `;
+}
+
+// Create Package Item
+function createPackageItem(pkg) {
+    return `
+        <div class="package-item">
+            <div class="package-item-name">${escapeHtml(pkg.name)}</div>
+            <div class="package-item-details">
+                <div class="package-item-detail">
+                    <span class="package-item-detail-label">Version:</span>
+                    <span class="package-item-detail-value">${escapeHtml(pkg.latestVersion)}</span>
+                </div>
+                ${pkg.link ? `
+                <div class="package-item-detail">
+                    <span class="package-item-detail-label">Link:</span>
+                    <span class="package-item-detail-value"><a href="${escapeHtml(pkg.link)}" target="_blank" rel="noopener noreferrer">View</a></span>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+
+// Toggle Package Group
+function togglePackageGroup(event) {
+    const header = event.currentTarget;
+    const group = header.closest('.package-group');
+    const items = group.querySelector('.package-group-items');
+    const toggle = header.querySelector('.package-group-toggle');
+    const isCollapsed = items.classList.contains('collapsed');
+    
+    if (isCollapsed) {
+        items.classList.remove('collapsed');
+        header.setAttribute('aria-expanded', 'true');
+        toggle.style.transform = 'rotate(90deg)';
+    } else {
+        items.classList.add('collapsed');
+        header.setAttribute('aria-expanded', 'false');
+        toggle.style.transform = 'rotate(0deg)';
+    }
+}// Show Delete Confirmation
 function showDeleteConfirmation(hostname) {
     deviceToDelete = hostname;
     deleteMessage.textContent = `Are you sure you want to delete device "${escapeHtml(hostname)}"? This action cannot be undone.`;

@@ -5,6 +5,7 @@ import { connectRedis, redisClient} from "./utils/redisClient";
 
 import device_routes from "./routes/device";
 import scan_routes from "./routes/scan";
+import package_routes from "./routes/package";
 
 import logger from './middleware/logger';
 import notFoundHandler from './middleware/notfound';
@@ -40,6 +41,7 @@ console.log("App initialized");
 //Add the routes
 app.use("/api/device", device_routes);
 app.use("/api/scan", scan_routes);
+app.use("/api/package", package_routes);
 
 // Version endpoint
 app.get("/api/version", (req, res) => {

@@ -1,5 +1,3 @@
-//import redisHelper from "../utils/redisHelper";
-
 import { prisma } from "../utils/prismaClient";
 
 export const getDevices = async () => {

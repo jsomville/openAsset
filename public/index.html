@@ -78,12 +78,24 @@
 
     <!-- Modal for Device Details -->
     <div id="detailsModal" class="modal" style="display: none;">
-        <div class="modal-content">
+        <div class="modal-content modal-large">
             <div class="modal-header">
                 <h2 id="detailsTitle">Device Details</h2>
                 <button class="modal-close" id="closeModal" aria-label="Close modal">&times;</button>
             </div>
-            <div class="modal-body" id="detailsBody"></div>
+            <div class="modal-body">
+                <!-- Device Header Info -->
+                <div id="deviceHeader" class="device-header-info"></div>
+                
+                <!-- Packages Section -->
+                <div id="packagesSection" class="packages-section" style="display: none;">
+                    <h3>Assigned Packages</h3>
+                    <div id="packloadingState" class="mini-loading" style="display: none;">
+                        <div class="mini-spinner"></div>
+                    </div>
+                    <div id="packagesList" class="packages-list"></div>
+                </div>
+            </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" id="closeModalBtn">Close</button>
             </div>
