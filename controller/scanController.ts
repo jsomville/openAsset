@@ -5,9 +5,7 @@ import { createScan } from "../service/scanService";
 export const addScan = async (req: Request, res: Response, next: NextFunction) => {
     try {
 
-        console.log("Adding scan", req.body);
-
-        const scan = "some scan";
+        const scan = req.body
 
         await createScan(scan);
 

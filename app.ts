@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import path from "path";
 import { connectRedis, redisClient} from "./utils/redisClient";
 
 import device_routes from "./routes/device";
@@ -31,11 +32,20 @@ app.set("trust proxy", true);
 app.use(express.json()); //Json parsing
 app.use(logger); //Logger Middleware
 
+// Serve static files from public folder
+app.use(express.static(path.join(__dirname, 'public')));
+
 console.log("App initialized");
 
 //Add the routes
 app.use("/api/device", device_routes);
 app.use("/api/scan", scan_routes);
+
+// Version endpoint
+app.get("/api/version", (req, res) => {
+  const packageJson = require("./package.json");
+  res.json({ version: packageJson.version });
+});
 
 
 //Add after routes middleware
