@@ -32,8 +32,6 @@ export const getDevice = async (id: string) => {
 
 export const createDevice = async (device: any) => {
   try {
-    console.log("Creating device", device);
-
     const newDevice = await prisma.device.create({
       data: device,
     });

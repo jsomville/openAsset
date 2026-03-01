@@ -3,7 +3,6 @@ import { createDevice, deleteDevice, deviceExists, getDevice, getDevices, update
 
 export const getAllDevices = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        console.error("@@ Getting all devices @@", { path: req.path, method: req.method });
         const devices = await getDevices(); 
 
         return res.status(200).json(devices);
@@ -32,7 +31,6 @@ export const getOneDevice = async (req: Request, res: Response, next: NextFuncti
 
 export const addDevice = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        console.log("Adding device", req.body);
         const deviceData = req.body;
 
         //check if device exists
@@ -52,7 +50,6 @@ export const addDevice = async (req: Request, res: Response, next: NextFunction)
 
 export const modifyDevice = async (req: Request, res: Response, next: NextFunction) => {
     try {    
-        console.log("Modifying device", req.body);
 
         const id = String(req.params.id);
         const deviceData = req.body;
