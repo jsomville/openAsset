@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
+import compression from "compression";
 import path from "path";
+import zlib from "zlib";
 import { connectRedis, redisClient} from "./utils/redisClient";
 
 import device_routes from "./routes/device";
@@ -29,8 +31,40 @@ app.set("trust proxy", true);
   await connectRedis();
 })();
 
+// Custom middleware to handle gzip-compressed request bodies BEFORE json parser
+app.use((req, res, next) => {
+  if (req.headers['content-encoding'] === 'gzip') {
+    const gunzip = zlib.createGunzip();
+    let data = Buffer.alloc(0);
+    
+    gunzip.on('data', (chunk) => {
+      data = Buffer.concat([data, chunk]);
+    });
+    
+    gunzip.on('end', () => {
+      try {
+        (req as any).body = JSON.parse(data.toString('utf-8'));
+        next();
+      } catch (err) {
+        console.error('JSON parse error:', err);
+        res.status(400).json({ message: "Invalid JSON in decompressed body" });
+      }
+    });
+    
+    gunzip.on('error', (err) => {
+      console.error('Gunzip error:', err);
+      res.status(400).json({ message: "Failed to decompress request body" });
+    });
+    
+    req.pipe(gunzip);
+  } else {
+    next();
+  }
+});
+
 //Middleware
-app.use(express.json()); //Json parsing
+app.use(express.json({ limit: '50mb' })); //Json parsing with large payload support
+app.use(compression()); //Gzip compression for responses
 app.use(logger); //Logger Middleware
 
 // Serve static files from public folder

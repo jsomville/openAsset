@@ -186,51 +186,66 @@ async function showDeviceDetails(hostname) {
         
         // Display device header info  
         deviceHeader.innerHTML = `
-            <div class="header-title">${escapeHtml(device.hostname)}</div>
-            <div class="header-grid">
-                <div class="header-item">
-                    <span class="header-label">Host</span>
-                    <span class="header-value">${escapeHtml(device.host)}</span>
+            <div class="info-groups-container">
+                <div class="info-group">
+                    <div class="info-pair">
+                        <span class="info-label">Hostname</span>
+                        <span class="info-value">${escapeHtml(device.hostname)}</span>
+                    </div>
+                    <div class="info-pair">
+                        <span class="info-label">Host</span>
+                        <span class="info-value">${escapeHtml(device.host)}</span>
+                    </div>
                 </div>
-                <div class="header-item">
-                    <span class="header-label">OS</span>
-                    <span class="header-value">${escapeHtml(device.os)}</span>
+                <div class="info-group">
+                    <div class="info-pair">
+                        <span class="info-label">OS</span>
+                        <span class="info-value">${escapeHtml(device.os)}</span>
+                    </div>
+                    <div class="info-pair">
+                        <span class="info-label">Kernel</span>
+                        <span class="info-value">${escapeHtml(device.kernel)}</span>
+                    </div>
                 </div>
-                <div class="header-item">
-                    <span class="header-label">Kernel</span>
-                    <span class="header-value">${escapeHtml(device.kernel)}</span>
+                <div class="info-group">
+                    <div class="info-pair">
+                        <span class="info-label">CPU</span>
+                        <span class="info-value">${escapeHtml(device.cpu)}</span>
+                    </div>
+                    <div class="info-pair">
+                        <span class="info-label">RAM</span>
+                        <span class="info-value">${escapeHtml(device.ram)}</span>
+                    </div>
                 </div>
-                <div class="header-item">
-                    <span class="header-label">CPU</span>
-                    <span class="header-value">${escapeHtml(device.cpu)}</span>
+                <div class="info-group">
+                    <div class="info-pair">
+                        <span class="info-label">Type</span>
+                        <span class="info-value">${escapeHtml(device.type)}</span>
+                    </div>
+                    <div class="info-pair">
+                        <span class="info-label">Status</span>
+                        <span class="info-value"><span class="status-badge ${statusClass}">${escapeHtml(device.status)}</span></span>
+                    </div>
                 </div>
-                <div class="header-item">
-                    <span class="header-label">RAM</span>
-                    <span class="header-value">${escapeHtml(device.ram)}</span>
+                <div class="info-group">
+                    <div class="info-pair">
+                        <span class="info-label">Uptime</span>
+                        <span class="info-value">${escapeHtml(device.uptime)}</span>
+                    </div>
+                    <div class="info-pair">
+                        <span class="info-label">Packages</span>
+                        <span class="info-value">${device.packagesCount}</span>
+                    </div>
                 </div>
-                <div class="header-item">
-                    <span class="header-label">Type</span>
-                    <span class="header-value">${escapeHtml(device.type)}</span>
-                </div>
-                <div class="header-item">
-                    <span class="header-label">Status</span>
-                    <span class="header-value"><span class="status-badge ${statusClass}">${escapeHtml(device.status)}</span></span>
-                </div>
-                <div class="header-item">
-                    <span class="header-label">Uptime</span>
-                    <span class="header-value">${escapeHtml(device.uptime)}</span>
-                </div>
-                <div class="header-item">
-                    <span class="header-label">Packages</span>
-                    <span class="header-value">${device.packagesCount}</span>
-                </div>
-                <div class="header-item">
-                    <span class="header-label">Created</span>
-                    <span class="header-value">${createdDate}</span>
-                </div>
-                <div class="header-item">
-                    <span class="header-label">Updated</span>
-                    <span class="header-value">${updatedDate}</span>
+                <div class="info-group">
+                    <div class="info-pair">
+                        <span class="info-label">Created</span>
+                        <span class="info-value">${createdDate}</span>
+                    </div>
+                    <div class="info-pair">
+                        <span class="info-label">Updated</span>
+                        <span class="info-value">${updatedDate}</span>
+                    </div>
                 </div>
             </div>
         `;

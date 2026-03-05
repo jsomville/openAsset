@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { createDevice, deviceExists, updateDevice } from "../service/deviceService";
 import { createPackage, packageExists, cleanupOrphanedPackages } from "../service/packageService";
-import { createDevicePackage, deleteAllDevicePackages } from "../service/devicePackageService";
+import { createDevicePackage, deleteAllDevicePackages, batchCreateDevicePackages } from "../service/devicePackageService";
 
 
 export const addScan = async (req: Request, res: Response, next: NextFunction) => {
@@ -43,11 +43,21 @@ export const addScan = async (req: Request, res: Response, next: NextFunction) =
         // Delete all previous device package assignments
         await deleteAllDevicePackages(scan.hostname);
 
-        // Process packages
+        // Collect packages to create and device packages to associate
+        const packagesToCreate = [];
+        const devicePackagesToCreate = [];
+        const processedPackageNames = new Set<string>();
+
         for (const pkg of scan.packages) {
             if (!pkg.package || !pkg.version) {
                 continue; // Skip packages without name or version
             }
+
+            // Track processed packages to avoid duplicates
+            if (processedPackageNames.has(pkg.package)) {
+                continue;
+            }
+            processedPackageNames.add(pkg.package);
 
             const packageData = {
                 name: pkg.package,
@@ -56,17 +66,29 @@ export const addScan = async (req: Request, res: Response, next: NextFunction) =
                 link: pkg.link || "",
             };
 
-            // Create package if it doesn't exist
-            const pkgExists = await packageExists(pkg.package, pkg.version);
-            if (!pkgExists) {
-                await createPackage(packageData);
-            }
+            packagesToCreate.push(packageData);
 
-            // Create device package association
-            await createDevicePackage({
+            // Device package association
+            devicePackagesToCreate.push({
                 hostname: scan.hostname,
                 packageName: pkg.package,
             });
+        }
+
+        // Batch create packages (with upsert to handle duplicates)
+        if (packagesToCreate.length > 0) {
+            await Promise.all(
+                packagesToCreate.map(pkg =>
+                    createPackage(pkg).catch(() => {
+                        // Ignore duplicates
+                    })
+                )
+            );
+        }
+
+        // Batch create device package associations
+        if (devicePackagesToCreate.length > 0) {
+            await batchCreateDevicePackages(devicePackagesToCreate);
         }
 
         // Clean up orphaned packages (packages not assigned to any device)
@@ -74,7 +96,7 @@ export const addScan = async (req: Request, res: Response, next: NextFunction) =
 
         return res.status(201).json({ 
             message: "Scan created successfully",
-            packagesProcessed: scan.packages.length,
+            packagesProcessed: devicePackagesToCreate.length,
             orphanedPackagesCleaned: cleanedCount
         });
     } catch (error: unknown) {

@@ -1,220 +1,21 @@
 #!/usr/bin/env python3
 """
 Asset Client - Collects device information and sends it to the OpenAsset server
-Uses neofetch for system information, dpkg for system packages, and pip for Python packages
+Uses system commands for system information, dpkg for system packages, and pip for Python packages
 """
 
 import json
 import subprocess
 import socket
-import re
 import sys
+import gzip
 import requests
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List
 from dataclasses import dataclass, asdict
 from pathlib import Path
 
-
-@dataclass
-class Package:
-    """Represents a package with type and version"""
-    type: str
-    package: str
-    version: str
-
-
-@dataclass
-class ScanData:
-    """Represents the device scan data"""
-    hostname: str
-    host: str
-    os: str
-    kernel: str
-    ram: str
-    cpu: str
-    type: str
-    status: str
-    uptime: str
-    packages: List[Dict]
-
-
-class AssetCollector:
-    """Collects device information from various sources"""
-    
-    def __init__(self):
-        self.packages: List[Package] = []
-    
-    def get_hostname(self) -> str:
-        """Get device hostname"""
-        try:
-            return socket.gethostname()
-        except Exception as e:
-            print(f"Warning: Could not get hostname: {e}")
-            return "unknown"
-    
-    def parse_neofetch(self) -> Dict[str, str]:
-        """Parse neofetch output to extract system information"""
-        info = {
-            'host': 'unknown',
-            'os': 'unknown',
-            'kernel': 'unknown',
-            'cpu': 'unknown',
-            'ram': 'unknown',
-            'uptime': 'unknown'
-        }
-        
-        try:
-            # Run neofetch with machine-readable output
-            result = subprocess.run(
-                ['neofetch', '--off'],
-                capture_output=True,
-                text=True,
-                timeout=10
-            )
-            
-            output = result.stdout
-            
-            # Parse key information from neofetch output
-            lines = output.split('\n')
-            
-            for line in lines:
-                if 'Host:' in line:
-                    info['host'] = line.split('Host:')[1].strip()
-                elif 'OS:' in line:
-                    info['os'] = line.split('OS:')[1].strip()
-                elif 'Kernel:' in line:
-                    info['kernel'] = line.split('Kernel:')[1].strip()
-                elif 'CPU:' in line:
-                    info['cpu'] = line.split('CPU:')[1].strip()
-                elif 'Memory:' in line:
-                    info['ram'] = line.split('Memory:')[1].strip()
-                elif 'Uptime:' in line:
-                    info['uptime'] = line.split('Uptime:')[1].strip()
-            
-        except FileNotFoundError:
-            print("Warning: neofetch not found. Please install neofetch: sudo apt install neofetch")
-        except subprocess.TimeoutExpired:
-            print("Warning: neofetch timed out")
-        except Exception as e:
-            print(f"Warning: Error running neofetch: {e}")
-        
-        return info
-    
-    def get_dpkg_packages(self) -> List[Package]:
-        """Get list of installed dpkg packages"""
-        packages = []
-        
-        try:
-            result = subprocess.run(
-                ['dpkg', '-l'],
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
-            
-            lines = result.stdout.split('\n')
-            
-            for line in lines:
-                # dpkg -l format: ii  package-name    version    architecture    description
-                parts = line.split()
-                if len(parts) >= 3 and parts[0] == 'ii':
-                    package_name = parts[1]
-                    version = parts[2]
-                    
-                    packages.append(Package(
-                        type='dpkg',
-                        package=package_name,
-                        version=version
-                    ))
-        except FileNotFoundError:
-            print("Warning: dpkg not found. This is a Debian/Ubuntu system requirement.")
-        except subprocess.TimeoutExpired:
-            print("Warning: dpkg list timed out")
-        except Exception as e:
-            print(f"Warning: Error getting dpkg packages: {e}")
-        
-        return packages
-    
-    def get_pip_packages(self) -> List[Package]:
-        """Get list of installed pip packages"""
-        packages = []
-        
-        try:
-            result = subprocess.run(
-                ['pip', 'list', '--format=json'],
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
-            
-            if result.returncode == 0:
-                pip_packages = json.loads(result.stdout)
-                
-                for pkg in pip_packages:
-                    packages.append(Package(
-                        type='pip',
-                        package=pkg['name'],
-                        version=pkg['version']
-                    ))
-        except FileNotFoundError:
-            print("Warning: pip not found. Please install pip: sudo apt install python3-pip")
-        except json.JSONDecodeError:
-            print("Warning: Could not parse pip output")
-        except subprocess.TimeoutExpired:
-            print("Warning: pip list timed out")
-        except Exception as e:
-            print(f"Warning: Error getting pip packages: {e}")
-        
-        return packages
-    
-    def get_device_status(self) -> str:
-        """Determine device status (online/offline)"""
-        return "online"
-    
-    def collect_all_packages(self):
-        """Collect all packages from various package managers"""
-        print("Collecting packages...")
-        
-        print("  - Getting dpkg packages...")
-        dpkg_packages = self.get_dpkg_packages()
-        print(f"    Found {len(dpkg_packages)} dpkg packages")
-        
-        print("  - Getting pip packages...")
-        pip_packages = self.get_pip_packages()
-        print(f"    Found {len(pip_packages)} pip packages")
-        
-        self.packages = dpkg_packages + pip_packages
-        print(f"Total packages collected: {len(self.packages)}")
-    
-    def get_scan_data(self) -> ScanData:
-        """Collect all device information and return scan data"""
-        print("Collecting device information...")
-        
-        hostname = self.get_hostname()
-        print(f"  - Hostname: {hostname}")
-        
-        print("  - Running neofetch...")
-        neofetch_info = self.parse_neofetch()
-        
-        self.collect_all_packages()
-        
-        # Convert packages to dictionaries
-        packages_list = [asdict(pkg) for pkg in self.packages]
-        
-        scan_data = ScanData(
-            hostname=hostname,
-            host=neofetch_info.get('host', 'unknown'),
-            os=neofetch_info.get('os', 'unknown'),
-            kernel=neofetch_info.get('kernel', 'unknown'),
-            ram=neofetch_info.get('ram', 'unknown'),
-            cpu=neofetch_info.get('cpu', 'unknown'),
-            type='linux',
-            status=self.get_device_status(),
-            uptime=neofetch_info.get('uptime', 'unknown'),
-            packages=packages_list
-        )
-        
-        return scan_data
+from asset_collector import AssetCollector, ScanData
+import config
 
 
 class AssetClient:
@@ -250,11 +51,22 @@ class AssetClient:
             print(f"  - OS: {scan_data.os}")
             print(f"  - Packages: {len(scan_data.packages)}")
             
+            # Compress payload using gzip
+            json_payload = json.dumps(payload).encode('utf-8')
+            compressed_payload = gzip.compress(json_payload)
+            
+            # Calculate compression ratio
+            compression_ratio = (1 - len(compressed_payload) / len(json_payload)) * 100
+            print(f"  - Compression: {len(json_payload)} → {len(compressed_payload)} bytes ({compression_ratio:.1f}% reduction)")
+            
             response = requests.post(
                 self.scan_endpoint,
-                json=payload,
+                data=compressed_payload,
                 timeout=self.timeout,
-                headers={'Content-Type': 'application/json'}
+                headers={
+                    'Content-Type': 'application/json',
+                    'Content-Encoding': 'gzip'
+                }
             )
             
             if response.status_code == 201:
@@ -298,14 +110,14 @@ def main():
     )
     parser.add_argument(
         '--server',
-        default='http://localhost:3000',
-        help='OpenAsset server URL (default: http://localhost:3000)'
+        default=config.SERVER_URL,
+        help=f'OpenAsset server URL (default: {config.SERVER_URL})'
     )
     parser.add_argument(
         '--timeout',
         type=int,
-        default=30,
-        help='Request timeout in seconds (default: 30)'
+        default=config.REQUEST_TIMEOUT,
+        help=f'Request timeout in seconds (default: {config.REQUEST_TIMEOUT})'
     )
     parser.add_argument(
         '--dry-run',
@@ -322,7 +134,7 @@ def main():
     try:
         # Collect device information
         collector = AssetCollector()
-        scan_data = collector.get_scan_data()
+        scan_data = collector.get_scan_data(device_type=config.DEVICE_TYPE)
         
         print("\n" + "=" * 60)
         print("Collected Information:")

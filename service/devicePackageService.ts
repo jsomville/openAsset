@@ -134,3 +134,17 @@ export const deleteAllDevicePackages = async (hostname: string) => {
     throw new Error("Error deleting device packages");
   }
 };
+
+export const batchCreateDevicePackages = async (devicePackagesData: any[]) => {
+  try {
+    const result = await prisma.devicePackage.createMany({
+      data: devicePackagesData,
+      skipDuplicates: true,
+    });
+    return result;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(message, error);
+    throw new Error("Error batch creating device packages");
+  }
+};
