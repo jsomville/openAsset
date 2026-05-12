@@ -46,14 +46,14 @@ function attachEventListeners() {
     themeToggle.addEventListener('click', toggleTheme);
     refreshBtn.addEventListener('click', () => loadDevices());
     searchInput.addEventListener('input', filterDevices);
-    
+
     // Modal close events
     closeModal.addEventListener('click', () => detailsModal.style.display = 'none');
     closeModalBtn.addEventListener('click', () => detailsModal.style.display = 'none');
     closeDeleteModal.addEventListener('click', () => deleteModal.style.display = 'none');
     cancelDeleteBtn.addEventListener('click', () => deleteModal.style.display = 'none');
     confirmDeleteBtn.addEventListener('click', confirmDelete);
-    
+
     // Close modals when clicking outside
     detailsModal.addEventListener('click', (e) => {
         if (e.target === detailsModal) detailsModal.style.display = 'none';
@@ -79,16 +79,16 @@ async function loadDevices() {
     try {
         showLoading(true);
         hideError();
-        
+
         const response = await fetch(DEVICES_ENDPOINT);
-        
+
         if (!response.ok) {
             throw new Error(`Failed to load devices: ${response.statusText}`);
         }
-        
+
         const devices = await response.json();
         allDevices = Array.isArray(devices) ? devices : [];
-        
+
         renderDevices(allDevices);
     } catch (error) {
         console.error('Error loading devices:', error);
@@ -107,7 +107,7 @@ function filterDevices() {
         device.host.toLowerCase().includes(searchTerm) ||
         device.os.toLowerCase().includes(searchTerm)
     );
-    
+
     renderDevices(filtered);
 }
 
@@ -118,15 +118,15 @@ function renderDevices(devices) {
         devicesContainer.innerHTML = '';
         return;
     }
-    
+
     emptyState.style.display = 'none';
     devicesContainer.innerHTML = devices.map(device => createDeviceRow(device)).join('');
-    
+
     // Attach event listeners to buttons
     document.querySelectorAll('.btn-details').forEach(btn => {
         btn.addEventListener('click', () => showDeviceDetails(btn.dataset.hostname));
     });
-    
+
     document.querySelectorAll('.btn-delete').forEach(btn => {
         btn.addEventListener('click', () => showDeleteConfirmation(btn.dataset.hostname));
     });
@@ -137,7 +137,7 @@ function createDeviceRow(device) {
     const statusClass = device.status === 'online' ? 'online' : 'offline';
     const statusText = device.status || 'unknown';
     const updatedDate = new Date(device.updatedAt).toLocaleString();
-    
+
     return `
         <tr>
             <td class="hostname-cell">${escapeHtml(device.hostname)}</td>
@@ -166,38 +166,32 @@ function createDeviceRow(device) {
 async function showDeviceDetails(hostname) {
     try {
         const response = await fetch(`${DEVICES_ENDPOINT}/${encodeURIComponent(hostname)}`);
-        
+
         if (!response.ok) {
             throw new Error('Failed to fetch device details');
         }
-        
+
         const device = await response.json();
         const detailsTitle = document.getElementById('detailsTitle');
         const deviceHeader = document.getElementById('deviceHeader');
         const packagesSection = document.getElementById('packagesSection');
         const packagesList = document.getElementById('packagesList');
         const packloadingState = document.getElementById('packloadingState');
-        
+
         detailsTitle.textContent = `${escapeHtml(device.hostname)}`;
-        
+
         const createdDate = new Date(device.createdAt).toLocaleString();
         const updatedDate = new Date(device.updatedAt).toLocaleString();
         const statusClass = device.status === 'online' ? 'online' : 'offline';
-        
+
         // Display device header info  
         deviceHeader.innerHTML = `
             <div class="info-groups-container">
                 <div class="info-group">
                     <div class="info-pair">
-                        <span class="info-label">Hostname</span>
-                        <span class="info-value">${escapeHtml(device.hostname)}</span>
-                    </div>
-                    <div class="info-pair">
                         <span class="info-label">Host</span>
                         <span class="info-value">${escapeHtml(device.host)}</span>
                     </div>
-                </div>
-                <div class="info-group">
                     <div class="info-pair">
                         <span class="info-label">OS</span>
                         <span class="info-value">${escapeHtml(device.os)}</span>
@@ -206,9 +200,14 @@ async function showDeviceDetails(hostname) {
                         <span class="info-label">Kernel</span>
                         <span class="info-value">${escapeHtml(device.kernel)}</span>
                     </div>
+                   
+                    <div class="info-pair">
+                        <span class="info-label">Type</span>
+                        <span class="info-value">${escapeHtml(device.type)}</span>
+                    </div>
                 </div>
                 <div class="info-group">
-                    <div class="info-pair">
+                 <div class="info-pair">
                         <span class="info-label">CPU</span>
                         <span class="info-value">${escapeHtml(device.cpu)}</span>
                     </div>
@@ -218,26 +217,10 @@ async function showDeviceDetails(hostname) {
                     </div>
                 </div>
                 <div class="info-group">
-                    <div class="info-pair">
-                        <span class="info-label">Type</span>
-                        <span class="info-value">${escapeHtml(device.type)}</span>
-                    </div>
-                    <div class="info-pair">
-                        <span class="info-label">Status</span>
-                        <span class="info-value"><span class="status-badge ${statusClass}">${escapeHtml(device.status)}</span></span>
-                    </div>
-                </div>
-                <div class="info-group">
-                    <div class="info-pair">
+                                    <div class="info-pair">
                         <span class="info-label">Uptime</span>
                         <span class="info-value">${escapeHtml(device.uptime)}</span>
                     </div>
-                    <div class="info-pair">
-                        <span class="info-label">Packages</span>
-                        <span class="info-value">${device.packagesCount}</span>
-                    </div>
-                </div>
-                <div class="info-group">
                     <div class="info-pair">
                         <span class="info-label">Created</span>
                         <span class="info-value">${createdDate}</span>
@@ -249,20 +232,24 @@ async function showDeviceDetails(hostname) {
                 </div>
             </div>
         `;
-        
+
         // Fetch and display packages
         if (device.packagesCount > 0) {
             packagesSection.style.display = 'block';
             packloadingState.style.display = 'block';
             packagesList.innerHTML = '';
             
+            // Update the packages section header with count
+            const packagesHeader = packagesSection.querySelector('h3');
+            packagesHeader.textContent = `Assigned Packages (${device.packagesCount})`;
+
             try {
                 const packagesResponse = await fetch(`/api/package/device/${encodeURIComponent(hostname)}`);
-                
+
                 if (packagesResponse.ok) {
                     const packages = await packagesResponse.json();
                     packloadingState.style.display = 'none';
-                    
+
                     if (packages.length === 0) {
                         packagesList.innerHTML = '<div class="packages-empty">No packages found</div>';
                     } else {
@@ -271,7 +258,7 @@ async function showDeviceDetails(hostname) {
                         packagesList.innerHTML = Object.entries(groupedPackages)
                             .map(([type, pkgs]) => createPackageGroup(type, pkgs))
                             .join('');
-                        
+
                         // Attach collapse/expand listeners
                         document.querySelectorAll('.package-group-header').forEach(header => {
                             header.addEventListener('click', togglePackageGroup);
@@ -295,7 +282,7 @@ async function showDeviceDetails(hostname) {
         } else {
             packagesSection.style.display = 'none';
         }
-        
+
         detailsModal.style.display = 'flex';
     } catch (error) {
         console.error('Error loading device details:', error);
@@ -306,7 +293,7 @@ async function showDeviceDetails(hostname) {
 // Group packages by type
 function groupPackagesByType(packages) {
     const grouped = {};
-    
+
     packages.forEach(pkg => {
         const type = pkg.type || 'Unknown';
         if (!grouped[type]) {
@@ -314,7 +301,7 @@ function groupPackagesByType(packages) {
         }
         grouped[type].push(pkg);
     });
-    
+
     // Sort groups alphabetically
     const sorted = {};
     Object.keys(grouped)
@@ -322,7 +309,7 @@ function groupPackagesByType(packages) {
         .forEach(key => {
             sorted[key] = grouped[key];
         });
-    
+
     return sorted;
 }
 
@@ -330,7 +317,7 @@ function groupPackagesByType(packages) {
 function createPackageGroup(type, packages) {
     const sortedPackages = packages.sort((a, b) => a.name.localeCompare(b.name));
     const groupId = `group-${type.replace(/\s+/g, '-').toLowerCase()}`;
-    
+
     return `
         <div class="package-group" id="${groupId}">
             <div class="package-group-header" role="button" tabindex="0" aria-expanded="false">
@@ -375,7 +362,7 @@ function togglePackageGroup(event) {
     const items = group.querySelector('.package-group-items');
     const toggle = header.querySelector('.package-group-toggle');
     const isCollapsed = items.classList.contains('collapsed');
-    
+
     if (isCollapsed) {
         items.classList.remove('collapsed');
         header.setAttribute('aria-expanded', 'true');
@@ -395,19 +382,19 @@ function showDeleteConfirmation(hostname) {
 // Confirm Delete
 async function confirmDelete() {
     if (!deviceToDelete) return;
-    
+
     try {
         const response = await fetch(`${DEVICES_ENDPOINT}/${encodeURIComponent(deviceToDelete)}`, {
             method: 'DELETE'
         });
-        
+
         if (!response.ok) {
             throw new Error('Failed to delete device');
         }
-        
+
         deleteModal.style.display = 'none';
         deviceToDelete = null;
-        
+
         // Reload devices
         await loadDevices();
     } catch (error) {
